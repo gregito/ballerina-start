@@ -7,3 +7,11 @@ example curl with body:
 ```curl http://localhost:9090/date/time -X GET -d '{"withMilisec":true}' -H 'Content-Type: application/json'```
 
 without body, it returns the actual time without miliseconds
+
+### Prerequisites:
+- Ballerina installed
+- Docker installed and running
+
+Build and start with docker:
+```make build```
+```make deploy```
