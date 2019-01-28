@@ -1,42 +1,46 @@
 import ballerina/http;
 import ballerina/time;
-import ballerina/io;
 import ballerina/log;
 import ballerina/swagger;
 import ballerinax/docker;
 
-type TimeRequest record {
+public type TimeRequest record {
     boolean? withMilisec;
     !...
 };
 
-string responseTypeJson = "application/json";
-string respErr = "Failed to respond to the caller";
+public type TimeResponse record {
+    string time;
+    map<any>? warning;
+};
 
-function getTime(http:Request request) returns string {
-        string formatBase = "HH:mm:ss";
-        json|error rj = request.getJsonPayload();
-        string returnVal;
-        if (rj is json) {
-            TimeRequest|error tr = TimeRequest.convert(rj);
-            if (tr is TimeRequest) {
-                var wm = tr.withMilisec;
-                if (wm is boolean) {
-                    if (wm) {
-                        return time:currentTime().format(string `{{ formatBase }}.SSSZ`);
-                    }
-                }   
-            }
+const string APPLICATION_JSON = "application/json";
+const string TIME_BASE_FORMAT = "HH:mm:ss";
+
+function getFormattedTime(string format) returns string {
+    return time:currentTime().format(format);
+}
+
+function createTimeForPayload(http:Request request) returns string|error {
+    json rj = check request.getJsonPayload();
+    TimeRequest tr = check TimeRequest.convert(rj);
+    var wm = tr.withMilisec;
+    if (wm is boolean) {
+        if (wm) {
+            return getFormattedTime(string `{{ TIME_BASE_FORMAT }}.SSSZ`);
         }
-        return time:currentTime().format(formatBase);
     }
+    return getFormattedTime(TIME_BASE_FORMAT);
+}
 
-function responseWithPayload(string|json payload, string contentType) returns http:Response {
-    http:Response response = new;
-    if (payload is string) {
-        response.setTextPayload(payload, contentType = contentType);   
+function getTime(http:Request request) returns TimeResponse {
+    TimeResponse response;
+    string|error t = createTimeForPayload(request);
+    if (t is string) {
+        response = {time: t, warning: ()};
     } else {
-        response.setTextPayload(payload.toString(), contentType = contentType);
+        log:printWarn(string `"error during request payload processing": {{ t.reason() }}`);
+        response = {time: getFormattedTime(TIME_BASE_FORMAT), warning: t.detail()};
     }
     return response;
 }
@@ -63,11 +67,19 @@ service date on new http:Listener(9090) {
         path: "/time"
     }
     resource function time(http:Caller caller, http:Request request) {
-        http:Response response;
-        response = responseWithPayload(string `time: {{getTime(request)}}`, responseTypeJson);
-        error? result = caller -> respond(response);
+        http:Response response = new;
+        TimeResponse respPayload = getTime(request);
+        json|error pl = json.convert(respPayload);
+        error? result;
+        if (pl is json) {
+            response.setJsonPayload(pl, contentType = APPLICATION_JSON);
+            result = caller -> respond(response);
+        } else {
+            response.setPayload(getFormattedTime(TIME_BASE_FORMAT));
+            result = caller -> respond(response);
+        }
         if (result is error) {
-            log:printWarn(respErr);
+            log:printWarn("Failed to respond to the caller");
         }
     }
 
