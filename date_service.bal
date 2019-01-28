@@ -13,14 +13,19 @@ type TimeRequest record {
 string responseTypeJson = "application/json";
 string respErr = "Failed to respond to the caller";
 
-function getTime(http:Request request) returns string|error {
-        json rj = check request.getJsonPayload();
-        TimeRequest tr = check TimeRequest.convert(rj);
-        var wm = tr.withMilisec;
+function getTime(http:Request request) returns string {
         string formatBase = "HH:mm:ss";
-        if (wm is boolean) {
-            if (wm) {
-                return time:currentTime().format(string `{{ formatBase }}.SSSZ`);
+        json|error rj = request.getJsonPayload();
+        string returnVal;
+        if (rj is json) {
+            TimeRequest|error tr = TimeRequest.convert(rj);
+            if (tr is TimeRequest) {
+                var wm = tr.withMilisec;
+                if (wm is boolean) {
+                    if (wm) {
+                        return time:currentTime().format(string `{{ formatBase }}.SSSZ`);
+                    }
+                }   
             }
         }
         return time:currentTime().format(formatBase);
@@ -59,14 +64,7 @@ service date on new http:Listener(9090) {
     }
     resource function time(http:Caller caller, http:Request request) {
         http:Response response;
-        string|error respPayload = getTime(request);
-        if (respPayload is string) {
-            response = responseWithPayload(string `time: {{respPayload}}`, responseTypeJson);
-        } else {
-            string warnMessageBase = "error during request payload processing";
-            log:printWarn(string `{{warnMessageBase}}: {{ respPayload.reason() }}`);
-            response = responseWithPayload({response: warnMessageBase}, responseTypeJson);
-        }
+        response = responseWithPayload(string `time: {{getTime(request)}}`, responseTypeJson);
         error? result = caller -> respond(response);
         if (result is error) {
             log:printWarn(respErr);
