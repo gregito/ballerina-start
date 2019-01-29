@@ -36,12 +36,7 @@ function createTimeForPayload(http:Request request) returns string|error {
 function getTime(http:Request request) returns TimeResponse {
     TimeResponse response;
     string|error t = createTimeForPayload(request);
-    if (t is string) {
-        response = {time: t, warning: ()};
-    } else {
-        log:printWarn(string `"error during request payload processing": {{ t.reason() }}`);
-        response = {time: getFormattedTime(TIME_BASE_FORMAT), warning: t.detail()};
-    }
+    response = (t is string) ? {time: t, warning: ()} : {time: getFormattedTime(TIME_BASE_FORMAT), warning: t.detail()};
     return response;
 }
 
@@ -73,11 +68,11 @@ service date on new http:Listener(9090) {
         error? result;
         if (pl is json) {
             response.setJsonPayload(pl, contentType = APPLICATION_JSON);
-            result = caller -> respond(response);
         } else {
-            response.setPayload(getFormattedTime(TIME_BASE_FORMAT));
-            result = caller -> respond(response);
+            log:printWarn(string `error during request payload processing! >> {{ pl.reason() }}`);
+            response.setJsonPayload({time: getFormattedTime(TIME_BASE_FORMAT)}, contentType = APPLICATION_JSON);
         }
+        result = caller -> respond(response);
         if (result is error) {
             log:printWarn("Failed to respond to the caller");
         }
