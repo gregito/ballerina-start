@@ -1,3 +1,4 @@
 *.balx
 docker/*
 ballerina-internal.*
+*.swagger.yaml

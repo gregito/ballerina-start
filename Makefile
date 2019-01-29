@@ -1,3 +1,6 @@
+swagger:
+	ballerina swagger export date_service.bal
+
 build:
 	ballerina build
 
