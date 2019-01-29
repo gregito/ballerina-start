@@ -59,7 +59,9 @@ service date on new http:Listener(9090) {
 
     @http:ResourceConfig {
         methods: ["GET"],
-        path: "/time"
+        path: "/time",
+        consumes: ["application/json"],
+        produces: ["application/json"]
     }
     resource function time(http:Caller caller, http:Request request) {
         http:Response response = new;
