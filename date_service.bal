@@ -6,7 +6,7 @@ import ballerinax/docker;
 
 public type TimeRequest record {
     boolean? withMilisec;
-    !...
+    !...;
 };
 
 public type TimeResponse record {
@@ -18,7 +18,7 @@ const string APPLICATION_JSON = "application/json";
 const string TIME_BASE_FORMAT = "HH:mm:ss";
 
 function getFormattedTime(string format) returns string {
-    return time:currentTime().format(format);
+    return time:format(time:currentTime(), format);
 }
 
 function createTimeForPayload(http:Request request) returns string|error {
