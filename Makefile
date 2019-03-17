@@ -4,7 +4,7 @@ swagger:
 build:
 	ballerina build
 
-deploy:
+# deploy: \
 	docker run -d -p 9090:9090 gregito.project.com/date_service:v1.0.0
 
 # terminate: \
