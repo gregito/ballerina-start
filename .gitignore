@@ -1,4 +1,5 @@
 *.balx
 docker/*
+kubernetes/*
 ballerina-internal.*
 *.swagger.yaml
