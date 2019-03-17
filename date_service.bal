@@ -3,6 +3,7 @@ import ballerina/time;
 import ballerina/log;
 import ballerina/swagger;
 import ballerinax/docker;
+import ballerinax/kubernetes;
 
 public type TimeRequest record {
     boolean? withMilisec;
@@ -36,16 +37,24 @@ function createTimeForPayload(http:Request request) returns string|error {
 function getTime(http:Request request) returns TimeResponse {
     TimeResponse response;
     string|error t = createTimeForPayload(request);
-    response = (t is string) ? {time: t, warning: ()} : {time: getFormattedTime(TIME_BASE_FORMAT), warning: t.detail()};
-    return response;
+    return (t is string) ? {time: t, warning: ()} : {time: getFormattedTime(TIME_BASE_FORMAT), warning: t.detail()};
 }
 
-@docker:Config {
-    registry:"gregito.project.com",
+@kubernetes:Ingress {
+    hostname:"gregito.project.com",
     name:"date_service",
-    tag:"v1.0.0"
+    path:"/"
 }
-@docker:Expose{}
+@kubernetes:Service {
+    serviceType:"NodePort",
+    name:"date_service"
+}
+@kubernetes:Deployment {
+    image:"gregito.project.com/date_service:v1.0",
+    name:"date_service",
+    dockerCertPath: "/home/gmeszaros/.minikube/certs",
+    dockerHost: "tcp://192.168.99.100:2376"
+}
 listener http:Listener ep0 = new(9090);
 @swagger:ServiceInfo {
     title: "Date service",
@@ -55,7 +64,7 @@ listener http:Listener ep0 = new(9090);
 @http:ServiceConfig {
     basePath: "/date"
 }
-service date on new http:Listener(9090) {
+service date on ep0 {
 
     @http:ResourceConfig {
         methods: ["GET"],
